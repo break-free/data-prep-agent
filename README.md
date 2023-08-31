@@ -40,13 +40,13 @@ cd data-cleaning-agent
 ./setup/build_data-cleaning-agent.sh $OPENAI_API_KEY
 ```
 
-Once completed, enter the toolbox.
+Once completed, enter the toolbox:
 
 ```bash
 toolbox enter data-cleaning-agent
 ```
 
-## Run the Agent
+## Demonstrating the Agent
 
 Once setup, to run the agent use the following command (from the
 `data-cleaning-agent` directory):
@@ -55,14 +55,26 @@ Once setup, to run the agent use the following command (from the
 python3 data-cleaning-agent.py
 ```
 
-## Using the Agent
+Before demonstrating the Agent again, be sure to remove the `Car_Insurance-Claim_updated.csv` file. If this is not removed, then the next run will end in an error:
 
+```bash
+rm datasets/Car_Insurance_Claim_updated.csv
+```
 
+## Extending the Agent
+
+The demonstration file is the `Car_Insurance-Claim.csv` file located under
+`datasets/`. This file should be used at all times for demonstrations.
+
+If the demonstration needs to be extended, then other datasets may be used
+however this also requires updates to the `datasetInfo.json` file too. The
+latter file provides descriptions for each column and the dataset in
+human-readable form.
 
 ## Credits
 
-* The entire BreakFree team: for providing code, unique insights, and
-alternative paths of progression; I stand on the shoulders of giants.
+* Colin Pitawanakwat: for providing the code, unique insights, and
+alternative paths of progression.
 * https://github.com/langchain-ai/langchain[LangChain Project]: for creating
 an impressive collection of libraries supporting interaction with and
 extending large language models; you guys are awesome.

@@ -67,7 +67,6 @@ class CreateDataPrepPlanTool(BaseTool, BaseSettings):
         df = pd.read_csv(csv_file)
         data = df.head(10)
         buf = io.StringIO()
-        s = df.info(buf=buf)
         info = buf.getvalue()
         descStats = df.describe()
         corr = df.corr(numeric_only=True)
