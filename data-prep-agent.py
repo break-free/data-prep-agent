@@ -1,28 +1,29 @@
-import os
-
-# Set OpenAI API key
-with open('openai-key.txt', 'r') as f:
-    key = f.read().strip()
-
-os.environ['OPENAI_API_KEY'] = key
-
+import ast
+import io
+import json
 from langchain.tools import BaseTool
 from langchain.agents import initialize_agent, load_tools
 from langchain.chains.conversation.memory import ConversationBufferWindowMemory
 from langchain.chat_models import ChatOpenAI
-import json
 import openai
+import os
 import pandas as pd
+from pydantic import BaseModel, BaseSettings, Field
+import sys
 import tiktoken
-import io
-import ast
+from typing import Type
+
+if "OPENAI_API_KEY" not in os.environ:
+    print("You must set an OPENAI_API_KEY using the Secrets tool",
+          file=sys.stderr)
 
 pd.set_option('display.max_colwidth', None)
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
 
+
 def askLLM(message, model="gpt-3.5-turbo-16k"):
-    messages = [{"role": "user", "content": message},]
+    messages = [{"role": "user", "content": message}, ]
 
     response = openai.ChatCompletion.create(
         model=model,
@@ -32,15 +33,17 @@ def askLLM(message, model="gpt-3.5-turbo-16k"):
 
     return response["choices"][0]["message"]["content"]
 
+# Data Preparation Tools
+# ======================
 
-########### Data Preparation Tools ###########
-from pydantic import BaseModel, BaseSettings, Field
-from typing import Type
-CSV_FILE: str = Field( description="the csv file name and/or location")
+
+CSV_FILE: str = Field(description="the csv file name and/or location")
 COLUMN_NAME: list = Field(description="the names of the columns that need to be modified for data cleaning/preparation. use python list formatting.")
+
 
 class csvSchema(BaseModel):
     csv_file: str = CSV_FILE
+
 
 class standardToolArgs(BaseModel):
     csv_file: str = CSV_FILE
@@ -50,11 +53,13 @@ class standardToolArgs(BaseModel):
 class CreateDataPrepPlanTool(BaseTool, BaseSettings):
     name = "Create Data Prep Plan"
     description = (
-        "Use this tool to create a step by step plan for cleaning/feature engineering a dataset for machine learning. "
-        "Always use this tool first when asked to prepare a dataset for machine learning models. "
-        "After determining the data preparation steps, use the tools you have available to perform those steps. "
-        "If there are no tools available for a specific step, skip that step and inform the user of what needs to be completed. "
-        "Then move to the next step and use the tools to complete those if available."
+        """Use this tool to create a step by step plan for cleaning/feature """ """engineering a dataset for machine learning. Always use this tool """
+        """first when asked to prepare a dataset for machine learning """
+        """models. After determining the data preparation steps, use the """
+        """tools you have available to perform those steps. If there are no """
+        """tools available for a specific step, skip that step and inform """
+        """the user of what needs to be completed. Then move to the next """
+        """step and use the tools to complete those if available."""
     )
     args_schema: Type[csvSchema] = csvSchema
 
@@ -81,7 +86,7 @@ class CreateDataPrepPlanTool(BaseTool, BaseSettings):
         When ordering the steps, handling categorical and ordinal columns should occur towards the end of the list, but always before handling any imbalance in the target variable.
         An individual column should not appear in both the categorical and ordinal handling steps - it should appear in one or the other.
         List all columns explicitly if they need to be adjusted in a step.
-        
+
         Data Information:
         The target variable for the dataset is {targetVar}.
         {dataDescription}. The features are:
@@ -102,7 +107,7 @@ class CreateDataPrepPlanTool(BaseTool, BaseSettings):
 
         catInfoResponse = askLLM(message, model="gpt-4")
         return catInfoResponse
-    
+
     def _arun(self, query: str):
         raise NotImplementedError("This tool does not support async")
 
@@ -110,8 +115,10 @@ class CreateDataPrepPlanTool(BaseTool, BaseSettings):
 class TextPreprocessingTool(BaseTool, BaseSettings):
     name = "Text Preprocessing Tool"
     description = (
-        "Use this tool for text preprocessing, specifically to convert free text fields into categorical values. "
-        "This tool should never be used to encode categorical values. It is only meant for text preprocessing to convert free text into categories."
+        """Use this tool for text preprocessing, specifically to convert """
+        """free text fields into categorical values. This tool should never """
+        """be used to encode categorical values. It is only meant for text """
+        """preprocessing to convert free text into categories."""
     )
     args_schema: Type[standardToolArgs] = standardToolArgs
 
@@ -146,7 +153,7 @@ class TextPreprocessingTool(BaseTool, BaseSettings):
         while i < len(df):
             row_to_append = df.iloc[i][colName]
             tempList.append(row_to_append)
-            
+
             # Calculate current token count
             dfAsString = f"{tempList}"
             numTokens = len(encoding.encode(dfAsString))
@@ -164,20 +171,20 @@ class TextPreprocessingTool(BaseTool, BaseSettings):
             print(". ")
             x = pd.Series(partialDf)
             xLength = len(x)
- 
+
             message = f'''
             Categorize the data in the data series below with the following category values:\n
             {category_values}
             Only use those listed category values. Do not create any new values.
             \n
             Map each individual data point in the series to a category value, and reply with this list format: ["categoryValue1", "categoryValue2", "categoryValue3"]
-            The response list should contain the same number of items, {xLength}, and be in the same order as the data series provided below. 
+            The response list should contain the same number of items, {xLength}, and be in the same order as the data series provided below.
             \n
             Data series:\n
             {x}
             '''
-            #print(message)
-            #print(len(encoding.encode(message)))
+            # print(message)
+            # print(len(encoding.encode(message)))
 
             newCol = askLLM(message, "gpt-4")
 
@@ -194,7 +201,7 @@ class TextPreprocessingTool(BaseTool, BaseSettings):
         updatedDf.to_csv(updatedCSV, index=False)
 
         return f"Updated dataset now saved in {updatedCSV}"
-    
+
     def _arun(self, query: str):
         raise NotImplementedError("This tool does not support async")
 
@@ -215,14 +222,14 @@ class RemoveColumnsTool(BaseTool, BaseSettings):
             df = pd.read_csv(updatedCSV)
         except:
             df = pd.read_csv(csv_file)
-        
+
         for col in column_name:
             df.drop(col, axis=1, inplace=True)
 
         df.to_csv(updatedCSV, index=False)
 
         return f"Successfully removed the following columns: {column_name}"
-    
+
     def _arun(self, query: str):
         raise NotImplementedError("This tool does not support async")
 
@@ -243,12 +250,12 @@ class EncodeCategoricalValuesTool(BaseTool, BaseSettings):
             df = pd.read_csv(updatedCSV)
         except:
             df = pd.read_csv(csv_file)
-        
+
         updatedDf = pd.get_dummies(df, columns=column_name, dtype=int)
         updatedDf.to_csv(updatedCSV, index=False)
 
         return f"Successfully encoded the following columns: {column_name}"
-    
+
     def _arun(self, query: str):
         raise NotImplementedError("This tool does not support async")
 
@@ -269,7 +276,7 @@ class HandleOrdinalValuesTool(BaseTool, BaseSettings):
             df = pd.read_csv(updatedCSV)
         except:
             df = pd.read_csv(csv_file)
-        
+
         ordinal_fields_with_labelencoder = column_name
 
         for field in ordinal_fields_with_labelencoder:
@@ -290,7 +297,7 @@ class HandleOrdinalValuesTool(BaseTool, BaseSettings):
         df.to_csv(updatedCSV, index=False)
 
         return f"Successfully encoded the following columns: {column_name}"
-    
+
     def _arun(self, query: str):
         raise NotImplementedError("This tool does not support async")
 
@@ -311,11 +318,11 @@ class HandleOutliersTool(BaseTool, BaseSettings):
             df = pd.read_csv(updatedCSV)
         except:
             df = pd.read_csv(csv_file)
-        
+
         # keep track of which columns get updated
         changedCols = []
         notChangedCols = []
-        
+
         for col in column_name:
             # given the context, ask LLM how it would handle the outliers
             data = df.head(10)
@@ -336,13 +343,16 @@ class HandleOutliersTool(BaseTool, BaseSettings):
             dataDescription = jsonFile["Column Descriptions"]["Description"]
             columnsDescription = jsonFile["Column Descriptions"]["Columns"]
 
-            # In the future the LLM should determine between different options for how to handle outliers.
-            # Right now, it's not good enough at determining the best option based on the business context.
+            # In the future the LLM should determine between different options
+            # for how to handle outliers. Right now, it's not good enough at
+            # determining the best option based on the business context.
             # - Replace outliers with the median (median)
             # - Remove outliers from the dataset (trim)
-            # - Floor and cap the outliers to the lower and upper quartiles (floor and cap)
-            # - Do nothing because the outliers are valid in the business context (keep)
-            
+            # - Floor and cap the outliers to the lower and upper quartiles
+            #   (floor and cap)
+            # - Do nothing because the outliers are valid in the business
+            #   context (keep)
+
             message = f'''
             Which values should be considered outliers and adjusted to the median in the '{col}' column?
             Use the data set information below to help with this determination. Make the best decision based on the data available.
@@ -379,14 +389,14 @@ class HandleOutliersTool(BaseTool, BaseSettings):
 
             # get the numbers for below and above which need to be handled as outliers
             try:
-                lowNum = ast.literal_eval(response[0]) #if number is returned, need the correct type
+                lowNum = ast.literal_eval(response[0])  # if number is returned, need the correct type
             except:
                 lowNum = response[0]
             try:
-                highNum = ast.literal_eval(response[1]) #if number is returned, need the correct type
+                highNum = ast.literal_eval(response[1])  # if number is returned, need the correct type
             except:
                 highNum = response[1]
-            
+
             # for now always use median; in future this should be dynamic based on the LLM response
             median = df[col].median()
 
@@ -405,7 +415,7 @@ class HandleOutliersTool(BaseTool, BaseSettings):
                 notChangedCols.append(col)
 
         return f"Successfully handled outliers for the following columns: {changedCols}. No changes made for the following columns: {notChangedCols}."
-    
+
     def _arun(self, query: str):
         raise NotImplementedError("This tool does not support async")
 
@@ -426,7 +436,7 @@ class HandleNegativeValuesTool(BaseTool, BaseSettings):
             df = pd.read_csv(updatedCSV)
         except:
             df = pd.read_csv(csv_file)
-        
+
         for col in column_name:
             median = df[col].median()
             df[col] = df[col].apply(lambda x: median if x < 0 else x)
@@ -434,10 +444,10 @@ class HandleNegativeValuesTool(BaseTool, BaseSettings):
         df.to_csv(updatedCSV, index=False)
 
         return "Negative values successfully replaced."
-    
+
     def _arun(self, query: str):
         raise NotImplementedError("This tool does not support async")
-    
+
 
 class HandleMissingValuesTool(BaseTool, BaseSettings):
     name = "Handle Missing Values Tool"
@@ -455,7 +465,7 @@ class HandleMissingValuesTool(BaseTool, BaseSettings):
             df = pd.read_csv(updatedCSV)
         except:
             df = pd.read_csv(csv_file)
-        
+
         successCols = []
         failCols = []
 
@@ -472,25 +482,25 @@ class HandleMissingValuesTool(BaseTool, BaseSettings):
                     df[col] = df[col].transform(lambda x: x.fillna(x.mode()))
                 else:
                     df[col] = df[col].transform(lambda x: x.fillna(x.median()))
-                
-                successCols.append(col)              
-            
+
+                successCols.append(col)
+
             except:
                 failCols.append(col)
 
         df.to_csv(updatedCSV, index=False)
 
         return f"Missing values successfully replaced: {successCols}. Missing values not replaced: {failCols}"
-    
+
     def _arun(self, query: str):
         raise NotImplementedError("This tool does not support async")
-    
 
-########### Set up LLM and Agent ###########
+
+# ########## Set up LLM and Agent ###########
 llm = ChatOpenAI(
     openai_api_key=os.environ['OPENAI_API_KEY'],
     temperature=0,
-    #model_name='gpt-3.5-turbo'
+    # model_name='gpt-3.5-turbo'
     model_name="gpt-4"
 )
 
@@ -527,11 +537,11 @@ agent = initialize_agent(
 )
 
 # The below print statement will show the information that the agent is working with (tool descriptions, etc.)
-#print(agent.agent.llm_chain.prompt.messages[0].prompt.template)
+# print(agent.agent.llm_chain.prompt.messages[0].prompt.template)
 
 # query = input("prompt: ")
 # agent(query)
 
-#agent("Can you preprocess text in datasets/feedback1.csv and convert the Reports column into categories?")
+# agent("Can you preprocess text in datasets/feedback1.csv and convert the Reports column into categories?")
 
 agent("Can you prepare a dataset for machine learning models? Use Car_Insurance_Claim.csv located in the datasets/ folder.")
