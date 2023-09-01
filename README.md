@@ -49,10 +49,10 @@ toolbox enter data-cleaning-agent
 ## Demonstrating the Agent
 
 Once setup, to run the agent use the following command (from the
-`data-cleaning-agent` directory):
+`data-prep-agent` directory):
 
 ```bash
-python3 data-cleaning-agent.py
+python3 data-prep-agent.py
 ```
 
 Before demonstrating the Agent again, be sure to remove the `Car_Insurance-Claim_updated.csv` file. If this is not removed, then the next run will end in an error:
