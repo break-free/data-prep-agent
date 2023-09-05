@@ -1,10 +1,10 @@
-# data-cleaning-agent Demonstration
+# data-prep-agent Demonstration
 
 Autonomous agent that cleans and prepares car insurance data.
 
 ## Description
 
-The `data-cleaning-agent` demonstration shows how an autonomous Agent can
+The `data-prep-agent` demonstration shows how an autonomous Agent can
 decide the best tools for cleaning and preparing data for ingestion into a
 machine learning model or pipeline.
 
@@ -29,21 +29,21 @@ follow the steps as executed in the build script.
 To install and run the `demo.py` file first download the repository.
 
 ```bash
-git clone https://github.com/break-free/data-cleaning-agent.git
+git clone https://github.com/break-free/data-prep-agent.git
 ```
 
 Once downloaded enter the directory and run the build script. Note you need an
 OpenAI API key to run the build script; it will not run without one.
 
 ```bash
-cd data-cleaning-agent
-./setup/build_data-cleaning-agent.sh $OPENAI_API_KEY
+cd data-prep-agent
+./setup/build_data-prep-agent.sh $OPENAI_API_KEY
 ```
 
 Once completed, enter the toolbox:
 
 ```bash
-toolbox enter data-cleaning-agent
+toolbox enter data-prep-agent
 ```
 
 ## Demonstrating the Agent
