@@ -8,7 +8,7 @@ if [ $# -ne 1 ]
     exit 1
 fi
 
-NAME=data-cleaning-agent
+NAME=data-prep-agent
 RUN="toolbox run --container $NAME"
 APPLICATIONS="gcc-c++ python3-pip python3-devel"
 
